@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Spotify Clone - Home</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div class="logo">
+            <i class="fas fa-music"></i>
+            <h2>Spotify Clone</h2>
+        </div>
+        
+        <nav class="nav-menu">
+            <a href="/" class="nav-item active">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </a>
+            <a href="/search" class="nav-item">
+                <i class="fas fa-search"></i>
+                <span>Search</span>
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-book"></i>
+                <span>Your Library</span>
+            </a>
+        </nav>
+
+        <div class="playlist-section">
+            <button class="create-playlist">
+                <i class="fas fa-plus"></i>
+                Create Playlist
+            </button>
+            <div class="saved-playlists" id="savedPlaylists">
+                <!-- Playlists will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="top-bar">
+            <div class="nav-buttons">
+                <button class="nav-btn" onclick="history.back()">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <button class="nav-btn" onclick="history.forward()">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+            <div class="user-menu">
+                <button class="user-btn">
+                    <i class="fas fa-user-circle"></i>
+                    Profile
+                </button>
+            </div>
+        </div>
+
+        <div class="content-wrapper">
+            <!-- Trending Section -->
+            <section class="content-section">
+                <h2 class="section-title">Trending Now</h2>
+                <div class="cards-grid" id="trendingGrid">
+                    <!-- Loading spinner -->
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Loading...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Top Charts -->
+            <section class="content-section">
+                <h2 class="section-title">Top Charts</h2>
+                <div class="cards-grid" id="chartsGrid">
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Loading...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Recommended -->
+            <section class="content-section">
+                <h2 class="section-title">Recommended for You</h2>
+                <div class="cards-grid" id="recommendedGrid">
+                    <div class="loading">
+                        <i class="fas fa-spinner fa-spin"></i>
+                        <p>Loading...</p>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Music Player -->
+    <div class="music-player" id="musicPlayer">
+        <div class="player-left">
+            <img src="https://via.placeholder.com/56" alt="Album Art" id="playerImage" class="player-image">
+            <div class="player-info">
+                <div class="player-title" id="playerTitle">Select a song</div>
+                <div class="player-artist" id="playerArtist">Artist</div>
+            </div>
+            <button class="player-icon-btn" id="likeBtn">
+                <i class="far fa-heart"></i>
+            </button>
+        </div>
+
+        <div class="player-center">
+            <div class="player-controls">
+                <button class="control-btn" id="shuffleBtn">
+                    <i class="fas fa-random"></i>
+                </button>
+                <button class="control-btn" id="prevBtn">
+                    <i class="fas fa-step-backward"></i>
+                </button>
+                <button class="control-btn play-btn" id="playBtn">
+                    <i class="fas fa-play"></i>
+                </button>
+                <button class="control-btn" id="nextBtn">
+                    <i class="fas fa-step-forward"></i>
+                </button>
+                <button class="control-btn" id="repeatBtn">
+                    <i class="fas fa-redo"></i>
+                </button>
+            </div>
+            <div class="player-timeline">
+                <span class="time-current" id="currentTime">0:00</span>
+                <div class="timeline">
+                    <input type="range" min="0" max="100" value="0" class="timeline-slider" id="timelineSlider">
+                </div>
+                <span class="time-total" id="totalTime">0:00</span>
+            </div>
+        </div>
+
+        <div class="player-right">
+            <button class="player-icon-btn" id="queueBtn">
+                <i class="fas fa-list"></i>
+            </button>
+            <button class="player-icon-btn" id="volumeBtn">
+                <i class="fas fa-volume-up"></i>
+            </button>
+            <div class="volume-control">
+                <input type="range" min="0" max="100" value="70" class="volume-slider" id="volumeSlider">
+            </div>
+        </div>
+    </div>
+
+    <audio id="audioPlayer"></audio>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/player.js') }}"></script>
+</body>
+</html>
