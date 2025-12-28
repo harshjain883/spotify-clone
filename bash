@@ -1,18 +1,15 @@
-# Navigate to your project folder
-cd spotify-clone
-
-# Initialize Git
+# Initialize git
 git init
 
 # Add all files
 git add .
 
 # Commit
-git commit -m "Initial commit - Clean Spotify Clone"
+git commit -m "Complete Spotify clone with full frontend"
 
-# Add remote (replace with your GitHub username)
-git remote add origin https://github.com/YOUR_USERNAME/spotify-clone.git
+# Add remote (replace YOUR_USERNAME)
+git remote add origin https://github.com/harshjain/spotify-clone.git
 
-# Push to GitHub
+# Push
 git branch -M main
 git push -u origin main
