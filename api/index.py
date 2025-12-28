@@ -1,29 +1,32 @@
-from flask import Flask, jsonify, request
+from flask import Flask, render_template, jsonify, request, send_from_directory
 import requests
 from flask_cors import CORS
+import os
 
-app = Flask(__name__)
+app = Flask(__name__, 
+            template_folder='../templates',
+            static_folder='../static')
 CORS(app)
 
 API_BASE = "https://jiosaavnapi-nu.vercel.app"
 
+# Serve the main page
 @app.route('/')
 def home():
-    return jsonify({
-        "message": "MusicStream API is running!",
-        "endpoints": {
-            "home": "/api/home",
-            "search_songs": "/api/search/songs?query=YOUR_QUERY",
-            "trending": "/api/trending"
-        }
-    })
+    return render_template('index.html')
 
+# Serve static files
+@app.route('/static/<path:path>')
+def send_static(path):
+    return send_from_directory('static', path)
+
+# API Routes
 @app.route('/api/home')
 def get_home():
     try:
-        r1 = requests.get(f"{API_BASE}/api/search/songs?query=trending&limit=10", timeout=10)
-        r2 = requests.get(f"{API_BASE}/api/search/albums?query=bollywood&limit=10", timeout=10)
-        r3 = requests.get(f"{API_BASE}/api/search/playlists?query=hindi&limit=10", timeout=10)
+        r1 = requests.get(f"{API_BASE}/api/search/songs?query=trending&limit=12", timeout=10)
+        r2 = requests.get(f"{API_BASE}/api/search/albums?query=bollywood&limit=12", timeout=10)
+        r3 = requests.get(f"{API_BASE}/api/search/playlists?query=hindi&limit=12", timeout=10)
         
         return jsonify({
             "success": True,
@@ -84,6 +87,22 @@ def search_playlists():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/search/all')
+def search_all():
+    try:
+        query = request.args.get('query', '')
+        if not query:
+            return jsonify({"error": "Query required"}), 400
+        
+        r = requests.get(f"{API_BASE}/api/search/all", params={
+            "query": query,
+            "limit": request.args.get('limit', 20)
+        }, timeout=10)
+        
+        return jsonify(r.json())
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route('/api/songs/<song_id>')
 def get_song(song_id):
     try:
@@ -125,4 +144,4 @@ def get_trending():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
-    app.run()
+    app.run(debug=True)
