@@ -1,5 +1,10 @@
 __pycache__/
 *.pyc
+*.pyo
 venv/
+env/
 .env
 .vercel
+.DS_Store
+*.log
+node_modules/
