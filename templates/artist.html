@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Artist - Spotify Clone</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <div class="sidebar">
+        <div class="logo">
+            <i class="fas fa-music"></i>
+            <h2>Spotify Clone</h2>
+        </div>
+        
+        <nav class="nav-menu">
+            <a href="/" class="nav-item">
+                <i class="fas fa-home"></i>
+                <span>Home</span>
+            </a>
+            <a href="/search" class="nav-item">
+                <i class="fas fa-search"></i>
+                <span>Search</span>
+            </a>
+            <a href="#" class="nav-item">
+                <i class="fas fa-book"></i>
+                <span>Your Library</span>
+            </a>
+        </nav>
+    </div>
+
+    <div class="main-content">
+        <div class="top-bar">
+            <div class="nav-buttons">
+                <button class="nav-btn" onclick="history.back()">
+                    <i class="fas fa-chevron-left"></i>
+                </button>
+                <button class="nav-btn" onclick="history.forward()">
+                    <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+            <div class="user-menu">
+                <button class="user-btn">
+                    <i class="fas fa-user-circle"></i>
+                    Profile
+                </button>
+            </div>
+        </div>
+
+        <div class="content-wrapper">
+            <!-- Artist Header -->
+            <div class="artist-header" id="artistHeader">
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Loading artist...</p>
+                </div>
+            </div>
+
+            <!-- Artist Controls -->
+            <div class="artist-controls" id="artistControls" style="display: none;">
+                <button class="play-all-btn" id="playAllBtn">
+                    <i class="fas fa-play"></i>
+                    Play
+                </button>
+                <button class="follow-btn" id="followBtn">
+                    <i class="fas fa-user-plus"></i>
+                    Follow
+                </button>
+                <button class="icon-btn">
+                    <i class="fas fa-ellipsis-h"></i>
+                </button>
+            </div>
+
+            <!-- Popular Songs -->
+            <section class="content-section">
+                <h2 class="section-title">Popular</h2>
+                <div id="popularSongs">
+                    <!-- Songs will be loaded here -->
+                </div>
+            </section>
+
+            <!-- Albums -->
+            <section class="content-section" id="albumsSection" style="display: none;">
+                <h2 class="section-title">Albums</h2>
+                <div class="cards-grid" id="artistAlbums">
+                    <!-- Albums will be loaded here -->
+                </div>
+            </section>
+
+            <!-- Similar Artists -->
+            <section class="content-section" id="similarSection" style="display: none;">
+                <h2 class="section-title">Fans Also Like</h2>
+                <div class="cards-grid" id="similarArtists">
+                    <!-- Similar artists will be loaded here -->
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <!-- Music Player -->
+    <div class="music-player" id="musicPlayer">
+        <div class="player-left">
+            <img src="https://via.placeholder.com/56" alt="Album Art" id="playerImage" class="player-image">
+            <div class="player-info">
+                <div class="player-title" id="playerTitle">Select a song</div>
+                <div class="player-artist" id="playerArtist">Artist</div>
+            </div>
+            <button class="player-icon-btn" id="likeBtn">
+                <i class="far fa-heart"></i>
+            </button>
+        </div>
+
+        <div class="player-center">
+            <div class="player-controls">
+                <button class="control-btn" id="shuffleBtn">
+                    <i class="fas fa-random"></i>
+                </button>
+                <button class="control-btn" id="prevBtn">
+                    <i class="fas fa-step-backward"></i>
+                </button>
+                <button class="control-btn play-btn" id="playBtn">
+                    <i class="fas fa-play"></i>
+                </button>
+                <button class="control-btn" id="nextBtn">
+                    <i class="fas fa-step-forward"></i>
+                </button>
+                <button class="control-btn" id="repeatBtn">
+                    <i class="fas fa-redo"></i>
+                </button>
+            </div>
+            <div class="player-timeline">
+                <span class="time-current" id="currentTime">0:00</span>
+                <div class="timeline">
+                    <input type="range" min="0" max="100" value="0" class="timeline-slider" id="timelineSlider">
+                </div>
+                <span class="time-total" id="totalTime">0:00</span>
+            </div>
+        </div>
+
+        <div class="player-right">
+            <button class="player-icon-btn" id="queueBtn">
+                <i class="fas fa-list"></i>
+            </button>
+            <button class="player-icon-btn" id="volumeBtn">
+                <i class="fas fa-volume-up"></i>
+            </button>
+            <div class="volume-control">
+                <input type="range" min="0" max="100" value="70" class="volume-slider" id="volumeSlider">
+            </div>
+        </div>
+    </div>
+
+    <audio id="audioPlayer"></audio>
+
+    <script>
+        const artistId = "{{ artist_id }}";
+    </script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/player.js') }}"></script>
+    <script>
+        // Load artist data
+        async function loadArtist() {
+            try {
+                const response = await fetch(`/api/artists/${artistId}`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    displayArtistHeader(data.data);
+                    displayPopularSongs(data.data.topSongs || data.data.songs);
+                    
+                    if (data.data.topAlbums && data.data.topAlbums.length > 0) {
+                        displayAlbums(data.data.topAlbums);
+                    }
+                    
+                    if (data.data.similarArtists && data.data.similarArtists.length > 0) {
+                        displaySimilarArtists(data.data.similarArtists);
+                    }
+                }
+            } catch (error) {
+                console.error('Error loading artist:', error);
+                document.getElementById('artistHeader').innerHTML = `
+                    <div class="loading">
+                        <i class="fas fa-exclamation-circle"></i>
+                        <p>Error loading artist</p>
+                    </div>
+                `;
+            }
+        }
+
+        function displayArtistHeader(artist) {
+            const header = document.getElementById('artistHeader');
+            const image = artist.image?.[2]?.link || artist.image || 'https://via.placeholder.com/300';
+            const followerCount = artist.followerCount || artist.fanCount || 'Unknown';
+            
+            header.innerHTML = `
+                <div class="artist-banner" style="background: linear-gradient(180deg, rgba(0,0,0,0.3) 0%, var(--bg-secondary) 100%), url('${image}'); background-size: cover; background-position: center;">
+                    <div class="artist-info">
+                        <span class="artist-verified">
+                            <i class="fas fa-check-circle"></i> Verified Artist
+                        </span>
+                        <h1 class="artist-name">${artist.name}</h1>
+                        <div class="artist-stats">
+                            <span>${formatFollowers(followerCount)} followers</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('artistControls').style.display = 'flex';
+        }
+
+        function formatFollowers(count) {
+            if (typeof count !== 'number') return count;
+            if (count >= 1000000) {
+                return (count / 1000000).toFixed(1) + 'M';
+            } else if (count >= 1000) {
+                return (count / 1000).toFixed(1) + 'K';
+            }
+            return count.toString();
+        }
+
+        function displayPopularSongs(songs) {
+            if (!songs || songs.length === 0) return;
+            
+            const container = document.getElementById('popularSongs');
+            container.innerHTML = songs.slice(0, 10).map((song, index) => `
+                <div class="song-item" onclick="playSongFromArtist('${song.id}', ${index})">
+                    <div class="song-number">${index + 1}</div>
+                    <img src="${song.image?.[2]?.link || song.image}" alt="${song.name}" class="song-thumbnail">
+                    <div class="song-details">
+                        <div class="song-name">${song.name || song.title}</div>
+                        <div class="song-artist">${song.primaryArtists || song.artists?.map(a => a.name).join(', ') || ''}</div>
+                    </div>
+                    <div class="song-plays">${formatPlays(song.playCount)}</div>
+                    <div class="song-duration">${formatDuration(song.duration)}</div>
+                </div>
+            `).join('');
+        }
+
+        function formatPlays(count) {
+            if (!count) return '';
+            if (count >= 1000000) {
+                return (count / 1000000).toFixed(1) + 'M';
+            } else if (count >= 1000) {
+                return (count / 1000).toFixed(1) + 'K';
+            }
+            return count.toString();
+        }
+
+        function displayAlbums(albums) {
+            document.getElementById('albumsSection').style.display = 'block';
+            const container = document.getElementById('artistAlbums');
+            container.innerHTML = albums.slice(0, 6).map(album => createCard(album)).join('');
+        }
+
+        function displaySimilarArtists(artists) {
+            document.getElementById('similarSection').style.display = 'block';
+            const container = document.getElementById('similarArtists');
+            container.innerHTML = artists.slice(0, 6).map(artist => createArtistCard(artist)).join('');
+        }
+
+        function createArtistCard(artist) {
+            const image = artist.image?.[2]?.link || artist.image || 'https://via.placeholder.com/300';
+            return `
+                <div class="card" onclick="window.location.href='/artist/${artist.id}'">
+                    <img src="${image}" alt="${artist.name}" class="card-image" style="border-radius: 50%;">
+                    <div class="card-title">${artist.name}</div>
+                    <div class="card-subtitle">Artist</div>
+                </div>
+            `;
+        }
+
+        async function playSongFromArtist(songId, index) {
+            currentSongIndex = index;
+            await playSongById(songId);
+        }
+
+        function formatDuration(seconds) {
+            if (!seconds) return '';
+            const mins = Math.floor(seconds / 60);
+            const secs = seconds % 60;
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // Follow button functionality
+        document.addEventListener('DOMContentLoaded', () => {
+            const followBtn = document.getElementById('followBtn');
+            if (followBtn) {
+                followBtn.addEventListener('click', () => {
+                    const isFollowing = followBtn.classList.contains('following');
+                    if (isFollowing) {
+                        followBtn.innerHTML = '<i class="fas fa-user-plus"></i> Follow';
+                        followBtn.classList.remove('following');
+                    } else {
+                        followBtn.innerHTML = '<i class="fas fa-user-check"></i> Following';
+                        followBtn.classList.add('following');
+                    }
+                });
+            }
+        });
+
+        loadArtist();
+    </script>
+</body>
+</html>
