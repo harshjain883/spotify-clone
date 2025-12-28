@@ -1,15 +1,14 @@
-# Initialize git
-git init
+# Navigate to your project
+cd spotify-clone
 
-# Add all files
+# Create runtime.txt
+echo "python-3.12" > runtime.txt
+
+# Update vercel.json (paste the new content above)
+
+# Add and commit
 git add .
+git commit -m "Optimize Vercel config"
 
-# Commit
-git commit -m "Complete Spotify clone with full frontend"
-
-# Add remote (replace YOUR_USERNAME)
-git remote add origin https://github.com/harshjain/spotify-clone.git
-
-# Push
-git branch -M main
-git push -u origin main
+# Push to GitHub
+git push origin main
