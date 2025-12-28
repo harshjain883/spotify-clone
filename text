@@ -1,0 +1,22 @@
+spotify-clone/
+├── api/
+│   ├── __init__.py
+│   └── index.py              # Main Flask app (Vercel entry point)
+├── static/
+│   ├── css/
+│   │   └── style.css
+│   ├── js/
+│   │   ├── app.js
+│   │   ├── player.js
+│   │   └── search.js
+│   └── images/
+│       └── logo.png
+├── templates/
+│   ├── index.html
+│   ├── search.html
+│   ├── album.html
+│   ├── artist.html
+│   └── playlist.html
+├── vercel.json
+├── requirements.txt
+└── README.md
