@@ -1,4 +1,3 @@
-// Search functionality
 let searchTimeout;
 const searchInput = document.getElementById('searchInput');
 const clearSearchBtn = document.getElementById('clearSearch');
@@ -15,12 +14,8 @@ if (searchInput) {
         
         if (query.length > 0) {
             clearSearchBtn.style.display = 'block';
-            
-            // Debounce search
             clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                performSearch(query);
-            }, 500);
+            searchTimeout = setTimeout(() => performSearch(query), 500);
         } else {
             clearSearchBtn.style.display = 'none';
             showBrowseCategories();
@@ -38,38 +33,17 @@ if (clearSearchBtn) {
 
 filterTabs.forEach(tab => {
     tab.addEventListener('click', () => {
-        // Update active tab
         filterTabs.forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
-        
         currentFilter = tab.dataset.filter;
-        
-        if (currentSearchQuery) {
-            performSearch(currentSearchQuery);
-        }
+        if (currentSearchQuery) performSearch(currentSearchQuery);
     });
 });
 
-// Search function
 async function performSearch(query) {
     currentSearchQuery = query;
     
-    let endpoint = '/api/search/all';
-    
-    switch(currentFilter) {
-        case 'songs':
-            endpoint = '/api/search/songs';
-            break;
-        case 'albums':
-            endpoint = '/api/search/albums';
-            break;
-        case 'artists':
-            endpoint = '/api/search/artists';
-            break;
-        case 'playlists':
-            endpoint = '/api/search/playlists';
-            break;
-    }
+    let endpoint = `/api/search/${currentFilter}`;
     
     try {
         console.log('Searching:', query, 'Filter:', currentFilter);
@@ -83,15 +57,13 @@ async function performSearch(query) {
         
         const response = await fetch(`${endpoint}?query=${encodeURIComponent(query)}`);
         
-        if (!response.ok) {
-            throw new Error(`HTTP error! status: ${response.status}`);
-        }
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
         
-        const data = await response.json();
-        console.log('Search results:', data);
+        const result = await response.json();
+        console.log('Search results:', result);
         
-        if (data.success && data.data) {
-            displaySearchResults(data.data);
+        if (result.success && result.data) {
+            displaySearchResults(result.data);
         } else {
             searchResults.innerHTML = `
                 <div class="loading">
@@ -105,7 +77,7 @@ async function performSearch(query) {
         searchResults.innerHTML = `
             <div class="loading">
                 <i class="fas fa-exclamation-circle"></i>
-                <p>Error searching. Please try again.</p>
+                <p>Search failed. Please try again.</p>
             </div>
         `;
     }
@@ -115,22 +87,21 @@ function displaySearchResults(data) {
     searchResults.innerHTML = '';
     
     if (currentFilter === 'all') {
-        // Display all categories
         let hasResults = false;
         
-        if (data.songs && data.songs.results && data.songs.results.length > 0) {
-            addResultSection('Top Songs', data.songs.results);
+        if (data.songs?.results?.length > 0) {
+            addResultSection('Songs', data.songs.results);
             hasResults = true;
         }
-        if (data.albums && data.albums.results && data.albums.results.length > 0) {
+        if (data.albums?.results?.length > 0) {
             addResultSection('Albums', data.albums.results);
             hasResults = true;
         }
-        if (data.artists && data.artists.results && data.artists.results.length > 0) {
+        if (data.artists?.results?.length > 0) {
             addResultSection('Artists', data.artists.results);
             hasResults = true;
         }
-        if (data.playlists && data.playlists.results && data.playlists.results.length > 0) {
+        if (data.playlists?.results?.length > 0) {
             addResultSection('Playlists', data.playlists.results);
             hasResults = true;
         }
@@ -144,9 +115,8 @@ function displaySearchResults(data) {
             `;
         }
     } else {
-        // Display specific category
-        const results = data.results || data;
-        if (results && results.length > 0) {
+        const results = data.results || [];
+        if (results.length > 0) {
             addResultSection('Results', results);
         } else {
             searchResults.innerHTML = `
@@ -170,7 +140,7 @@ function addResultSection(title, items) {
     
     const grid = document.createElement('div');
     grid.className = 'cards-grid';
-    grid.innerHTML = items.slice(0, 6).map(item => createCard(item)).join('');
+    grid.innerHTML = items.slice(0, 12).map(item => createCard(item)).join('');
     section.appendChild(grid);
     
     searchResults.appendChild(section);
@@ -189,9 +159,9 @@ function showBrowseCategories() {
                     <h3>Punjabi</h3>
                     <i class="fas fa-music"></i>
                 </div>
-                <div class="category-card" style="background: linear-gradient(135deg, #f59b23, #8d67ab);" onclick="searchCategory('Pop')">
-                    <h3>Pop</h3>
-                    <i class="fas fa-music"></i>
+                <div class="category-card" style="background: linear-gradient(135deg, #f59b23, #8d67ab);" onclick="searchCategory('Arijit Singh')">
+                    <h3>Arijit Singh</h3>
+                    <i class="fas fa-microphone"></i>
                 </div>
                 <div class="category-card" style="background: linear-gradient(135deg, #dc148c, #e8161f);" onclick="searchCategory('Rock')">
                     <h3>Rock</h3>
@@ -201,9 +171,9 @@ function showBrowseCategories() {
                     <h3>Hip Hop</h3>
                     <i class="fas fa-music"></i>
                 </div>
-                <div class="category-card" style="background: linear-gradient(135deg, #8d67ab, #8d1b3d);" onclick="searchCategory('Electronic')">
-                    <h3>Electronic</h3>
-                    <i class="fas fa-headphones"></i>
+                <div class="category-card" style="background: linear-gradient(135deg, #8d67ab, #8d1b3d);" onclick="searchCategory('Romance')">
+                    <h3>Romance</h3>
+                    <i class="fas fa-heart"></i>
                 </div>
             </div>
         </div>
