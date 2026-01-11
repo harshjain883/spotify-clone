@@ -17,20 +17,23 @@ app = Flask(__name__,
 
 CORS(app)
 
-# JioSaavn API
+# JioSaavn API - NO TRAILING SLASH
 API_BASE = "https://saavn.sumit.co"
 
 def make_request(endpoint, params=None):
     """Make API request with error handling"""
     try:
-        url = f"{API_BASE}{endpoint}"
+        # Remove leading slash from endpoint if present to avoid double slash
+        endpoint = endpoint.lstrip('/')
+        url = f"{API_BASE}/{endpoint}"
+        
         logger.info(f"Requesting: {url} | Params: {params}")
         
         response = requests.get(url, params=params, timeout=15)
         response.raise_for_status()
         data = response.json()
         
-        logger.info(f"Response: {data.get('success', 'N/A')}")
+        logger.info(f"Response success: {data.get('success', 'N/A')}")
         return data
         
     except requests.Timeout:
@@ -39,6 +42,9 @@ def make_request(endpoint, params=None):
     except requests.RequestException as e:
         logger.error(f"Request error: {str(e)}")
         return {"success": False, "error": str(e)}
+    except ValueError as e:
+        logger.error(f"JSON parse error: {str(e)}")
+        return {"success": False, "error": "Invalid JSON response"}
     except Exception as e:
         logger.error(f"Unexpected error: {str(e)}")
         return {"success": False, "error": str(e)}
@@ -71,32 +77,36 @@ def playlist_page(playlist_id):
 def health():
     """Health check"""
     try:
-        test = make_request('/modules')
+        test = make_request('modules')
         return jsonify({
             "success": True,
             "api_working": test.get('success', False),
+            "api_url": API_BASE,
+            "test_response": test
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False, 
+            "error": str(e),
             "api_url": API_BASE
         })
-    except:
-        return jsonify({"success": False, "error": "API not responding"})
 
 @app.route('/api/modules')
 def get_modules():
     """Get home modules"""
-    data = make_request('/modules')
+    data = make_request('modules')
     return jsonify(data)
 
 @app.route('/api/trending')
 def get_trending():
     """Get trending"""
-    # Use modules as fallback
-    data = make_request('/modules')
+    data = make_request('modules')
     return jsonify(data)
 
 @app.route('/api/charts')
 def get_charts():
     """Get charts"""
-    data = make_request('/modules')
+    data = make_request('modules')
     return jsonify(data)
 
 # ==================== SEARCH ====================
@@ -108,7 +118,7 @@ def search_all():
     if not query:
         return jsonify({"success": False, "error": "Query required"}), 400
     
-    data = make_request('/search/all', {'query': query})
+    data = make_request('search/all', {'query': query})
     return jsonify(data)
 
 @app.route('/api/search/songs')
@@ -121,7 +131,7 @@ def search_songs():
     page = request.args.get('page', '1')
     limit = request.args.get('limit', '20')
     
-    data = make_request('/search/songs', {
+    data = make_request('search/songs', {
         'query': query,
         'page': page,
         'limit': limit
@@ -135,7 +145,14 @@ def search_albums():
     if not query:
         return jsonify({"success": False, "error": "Query required"}), 400
     
-    data = make_request('/search/albums', {'query': query})
+    page = request.args.get('page', '1')
+    limit = request.args.get('limit', '20')
+    
+    data = make_request('search/albums', {
+        'query': query,
+        'page': page,
+        'limit': limit
+    })
     return jsonify(data)
 
 @app.route('/api/search/artists')
@@ -145,7 +162,14 @@ def search_artists():
     if not query:
         return jsonify({"success": False, "error": "Query required"}), 400
     
-    data = make_request('/search/artists', {'query': query})
+    page = request.args.get('page', '1')
+    limit = request.args.get('limit', '20')
+    
+    data = make_request('search/artists', {
+        'query': query,
+        'page': page,
+        'limit': limit
+    })
     return jsonify(data)
 
 @app.route('/api/search/playlists')
@@ -155,7 +179,14 @@ def search_playlists():
     if not query:
         return jsonify({"success": False, "error": "Query required"}), 400
     
-    data = make_request('/search/playlists', {'query': query})
+    page = request.args.get('page', '1')
+    limit = request.args.get('limit', '20')
+    
+    data = make_request('search/playlists', {
+        'query': query,
+        'page': page,
+        'limit': limit
+    })
     return jsonify(data)
 
 # ==================== DETAILS ====================
@@ -163,25 +194,31 @@ def search_playlists():
 @app.route('/api/songs/<song_id>')
 def get_song(song_id):
     """Get song by ID"""
-    data = make_request(f'/songs/{song_id}')
+    data = make_request(f'songs/{song_id}')
     return jsonify(data)
 
 @app.route('/api/albums/<album_id>')
 def get_album(album_id):
     """Get album by ID"""
-    data = make_request(f'/albums/{album_id}')
+    data = make_request(f'albums/{album_id}')
     return jsonify(data)
 
 @app.route('/api/playlists/<playlist_id>')
 def get_playlist(playlist_id):
     """Get playlist by ID"""
-    data = make_request(f'/playlists/{playlist_id}')
+    data = make_request(f'playlists/{playlist_id}')
     return jsonify(data)
 
 @app.route('/api/artists/<artist_id>')
 def get_artist(artist_id):
     """Get artist by ID"""
-    data = make_request(f'/artists/{artist_id}')
+    data = make_request(f'artists/{artist_id}')
+    return jsonify(data)
+
+@app.route('/api/lyrics/<song_id>')
+def get_lyrics(song_id):
+    """Get lyrics"""
+    data = make_request(f'songs/{song_id}/lyrics')
     return jsonify(data)
 
 # ==================== ERROR HANDLERS ====================
@@ -189,7 +226,7 @@ def get_artist(artist_id):
 @app.errorhandler(404)
 def not_found(e):
     if request.path.startswith('/api/'):
-        return jsonify({"success": False, "error": "Not found"}), 404
+        return jsonify({"success": False, "error": "Endpoint not found"}), 404
     return render_template('index.html')
 
 @app.errorhandler(500)
