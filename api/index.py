@@ -18,7 +18,7 @@ app = Flask(__name__,
 CORS(app)
 
 # JioSaavn API
-API_BASE = "https://jiosaavnapi-nu.vercel.app"
+API_BASE = "https://saavn.sumit.co/"
 
 def make_request(endpoint, params=None):
     """Make API request with error handling"""
