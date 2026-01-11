@@ -17,15 +17,49 @@ app = Flask(__name__,
 
 CORS(app)
 
-# JioSaavn API
-API_BASE = "https://saavn.sumit.co"
+# Try multiple JioSaavn API endpoints (in order of preference)
+API_ENDPOINTS = [
+    "https://saavn.dev/api",  # Most reliable
+    "https://jiosaavn-api-privatecvc.vercel.app/api",
+    "https://saavnapi.vercel.app",
+]
+
+# Current working API
+CURRENT_API = None
+
+def find_working_api():
+    """Find a working API endpoint"""
+    global CURRENT_API
+    
+    if CURRENT_API:
+        return CURRENT_API
+    
+    for api in API_ENDPOINTS:
+        try:
+            logger.info(f"Testing API: {api}")
+            response = requests.get(f"{api}/search/songs?query=test&limit=1", timeout=5)
+            if response.status_code == 200:
+                data = response.json()
+                if data.get('success'):
+                    CURRENT_API = api
+                    logger.info(f"✅ Found working API: {api}")
+                    return api
+        except Exception as e:
+            logger.error(f"❌ API {api} failed: {str(e)}")
+            continue
+    
+    # Default fallback
+    CURRENT_API = API_ENDPOINTS[0]
+    return CURRENT_API
 
 def make_request(endpoint, params=None):
     """Make API request with error handling"""
     try:
+        api_base = find_working_api()
+        
         # Remove leading slash from endpoint
         endpoint = endpoint.lstrip('/')
-        url = f"{API_BASE}/{endpoint}"
+        url = f"{api_base}/{endpoint}"
         
         logger.info(f"Requesting: {url} | Params: {params}")
         
@@ -75,28 +109,29 @@ def playlist_page(playlist_id):
 
 @app.route('/api/health')
 def health():
-    """Health check"""
+    """Health check - finds and tests working API"""
     try:
-        # Test with a real search query instead of modules
-        test = make_request('search/albums', {'query': 'trending', 'limit': '5'})
+        api_base = find_working_api()
+        test = make_request('search/songs', {'query': 'test', 'limit': '1'})
+        
         return jsonify({
             "success": True,
             "api_working": test.get('success', False),
-            "api_url": API_BASE,
+            "api_url": api_base,
             "test_response": test
         })
     except Exception as e:
         return jsonify({
             "success": False, 
             "error": str(e),
-            "api_url": API_BASE
+            "tried_apis": API_ENDPOINTS
         })
 
 @app.route('/api/modules')
 def get_modules():
     """Get home modules - using search for trending content"""
-    # Since /modules doesn't exist, we'll search for trending albums
-    albums = make_request('search/albums', {'query': 'trending', 'limit': '20'})
+    # Search for popular albums
+    albums = make_request('search/albums', {'query': 'bollywood', 'limit': '20'})
     
     if albums.get('success'):
         return jsonify({
@@ -106,25 +141,22 @@ def get_modules():
             }
         })
     
-    # Fallback to popular searches
-    albums = make_request('search/albums', {'query': 'bollywood hits', 'limit': '20'})
+    # Fallback
     return jsonify({
-        "success": albums.get('success', False),
-        "data": {
-            "albums": albums.get('data', {}).get('results', [])
-        }
+        "success": False,
+        "error": "Failed to load modules"
     })
 
 @app.route('/api/trending')
 def get_trending():
     """Get trending songs"""
-    data = make_request('search/songs', {'query': 'trending', 'limit': '20'})
+    data = make_request('search/songs', {'query': 'trending bollywood', 'limit': '20'})
     return jsonify(data)
 
 @app.route('/api/charts')
 def get_charts():
     """Get top charts"""
-    data = make_request('search/playlists', {'query': 'top 50', 'limit': '20'})
+    data = make_request('search/playlists', {'query': 'top charts', 'limit': '20'})
     return jsonify(data)
 
 # ==================== SEARCH ====================
@@ -239,22 +271,7 @@ def get_lyrics(song_id):
     data = make_request(f'songs/{song_id}/lyrics')
     return jsonify(data)
 
-# ==================== ERROR HANDLERS ====================
-
-@app.errorhandler(404)
-def not_found(e):
-    if request.path.startswith('/api/'):
-        return jsonify({"success": False, "error": "Endpoint not found"}), 404
-    return render_template('index.html')
-
-@app.errorhandler(500)
-def server_error(e):
-    logger.error(f"Server error: {str(e)}")
-    return jsonify({"success": False, "error": "Internal server error"}), 500
-
-if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5000)
-
+# ==================== TEST PAGE ====================
 
 @app.route('/test-api')
 def test_api_page():
@@ -263,7 +280,7 @@ def test_api_page():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>API Test - JioSaavn</title>
+        <title>API Test - Auto Detect</title>
         <style>
             body { 
                 font-family: Arial; 
@@ -300,30 +317,48 @@ def test_api_page():
             }
             .success { background: #1db954; color: #000; }
             .error { background: #f44336; color: #fff; }
+            .info { background: #2196F3; color: #fff; }
         </style>
     </head>
     <body>
-        <h1>🎵 JioSaavn API Test Interface</h1>
-        <p>API Base: <strong>https://saavn.sumit.co</strong></p>
+        <h1>🎵 JioSaavn API Test (Auto-Detect)</h1>
+        <div id="api-status" class="status info">Detecting API...</div>
         
         <div id="status"></div>
         
         <h2>Test Endpoints:</h2>
-        <button onclick="testSearch('songs', 'dilbar')">🎵 Search Songs (dilbar)</button>
-        <button onclick="testSearch('albums', 'trending')">💿 Search Albums (trending)</button>
-        <button onclick="testSearch('artists', 'arijit')">👤 Search Artists (arijit)</button>
-        <button onclick="testSearch('playlists', 'romantic')">📋 Search Playlists (romantic)</button>
-        <button onclick="testSearchAll('bollywood')">🔍 Search All (bollywood)</button>
-        <br>
-        <button onclick="testSong('JGaRKE44')">🎵 Get Song (ID: JGaRKE44)</button>
-        <button onclick="testAlbum('1134498')">💿 Get Album</button>
-        <button onclick="testPlaylist('110858205')">📋 Get Playlist</button>
-        <button onclick="testArtist('459320')">👤 Get Artist (Arijit Singh)</button>
+        <button onclick="testHealth()">🔍 Check API Health</button>
+        <button onclick="testSearch('songs', 'dilbar')">🎵 Search Songs</button>
+        <button onclick="testSearch('albums', 'bollywood')">💿 Search Albums</button>
+        <button onclick="testSong('JGaRKE44')">🎵 Get Song</button>
         
         <h2>Response:</h2>
         <pre id="results">Click a button to test...</pre>
         
         <script>
+            async function testHealth() {
+                try {
+                    showStatus(true, 'Testing API health...');
+                    const res = await fetch('/api/health');
+                    const data = await res.json();
+                    
+                    const apiStatus = document.getElementById('api-status');
+                    if (data.api_working) {
+                        apiStatus.className = 'status success';
+                        apiStatus.textContent = '✅ API Working: ' + data.api_url;
+                        showStatus(true, '✅ API is working!');
+                    } else {
+                        apiStatus.className = 'status error';
+                        apiStatus.textContent = '❌ API Not Working';
+                        showStatus(false, '❌ API test failed');
+                    }
+                    
+                    document.getElementById('results').textContent = JSON.stringify(data, null, 2);
+                } catch (error) {
+                    showStatus(false, '❌ Error: ' + error.message);
+                }
+            }
+            
             function showStatus(success, message) {
                 const status = document.getElementById('status');
                 status.className = 'status ' + (success ? 'success' : 'error');
@@ -332,119 +367,59 @@ def test_api_page():
             
             async function testSearch(type, query) {
                 try {
-                    showStatus(true, `Searching ${type} for "${query}"...`);
+                    showStatus(true, `Searching ${type}...`);
                     const res = await fetch(`/api/search/${type}?query=${query}&limit=5`);
                     const data = await res.json();
                     
                     if (data.success) {
-                        showStatus(true, `✅ Found ${data.data?.results?.length || 0} results!`);
+                        showStatus(true, `✅ Found results!`);
                     } else {
-                        showStatus(false, `❌ Search failed: ${data.error}`);
+                        showStatus(false, `❌ Failed: ${data.error}`);
                     }
                     
                     document.getElementById('results').textContent = JSON.stringify(data, null, 2);
                 } catch (error) {
-                    showStatus(false, `❌ Error: ${error.message}`);
-                    document.getElementById('results').textContent = 'Error: ' + error.message;
-                }
-            }
-            
-            async function testSearchAll(query) {
-                try {
-                    showStatus(true, `Searching all for "${query}"...`);
-                    const res = await fetch(`/api/search/all?query=${query}`);
-                    const data = await res.json();
-                    
-                    if (data.success) {
-                        showStatus(true, `✅ Search completed!`);
-                    } else {
-                        showStatus(false, `❌ Search failed: ${data.error}`);
-                    }
-                    
-                    document.getElementById('results').textContent = JSON.stringify(data, null, 2);
-                } catch (error) {
-                    showStatus(false, `❌ Error: ${error.message}`);
-                    document.getElementById('results').textContent = 'Error: ' + error.message;
+                    showStatus(false, '❌ Error: ' + error.message);
                 }
             }
             
             async function testSong(id) {
                 try {
-                    showStatus(true, `Fetching song ${id}...`);
+                    showStatus(true, 'Fetching song...');
                     const res = await fetch(`/api/songs/${id}`);
                     const data = await res.json();
                     
                     if (data.success) {
-                        showStatus(true, `✅ Song loaded: ${data.data?.[0]?.name || 'Unknown'}`);
+                        showStatus(true, '✅ Song loaded!');
                     } else {
                         showStatus(false, `❌ Failed: ${data.error}`);
                     }
                     
                     document.getElementById('results').textContent = JSON.stringify(data, null, 2);
                 } catch (error) {
-                    showStatus(false, `❌ Error: ${error.message}`);
-                    document.getElementById('results').textContent = 'Error: ' + error.message;
+                    showStatus(false, '❌ Error: ' + error.message);
                 }
             }
             
-            async function testAlbum(id) {
-                try {
-                    showStatus(true, `Fetching album ${id}...`);
-                    const res = await fetch(`/api/albums/${id}`);
-                    const data = await res.json();
-                    
-                    if (data.success) {
-                        showStatus(true, `✅ Album loaded!`);
-                    } else {
-                        showStatus(false, `❌ Failed: ${data.error}`);
-                    }
-                    
-                    document.getElementById('results').textContent = JSON.stringify(data, null, 2);
-                } catch (error) {
-                    showStatus(false, `❌ Error: ${error.message}`);
-                    document.getElementById('results').textContent = 'Error: ' + error.message;
-                }
-            }
-            
-            async function testPlaylist(id) {
-                try {
-                    showStatus(true, `Fetching playlist ${id}...`);
-                    const res = await fetch(`/api/playlists/${id}`);
-                    const data = await res.json();
-                    
-                    if (data.success) {
-                        showStatus(true, `✅ Playlist loaded!`);
-                    } else {
-                        showStatus(false, `❌ Failed: ${data.error}`);
-                    }
-                    
-                    document.getElementById('results').textContent = JSON.stringify(data, null, 2);
-                } catch (error) {
-                    showStatus(false, `❌ Error: ${error.message}`);
-                    document.getElementById('results').textContent = 'Error: ' + error.message;
-                }
-            }
-            
-            async function testArtist(id) {
-                try {
-                    showStatus(true, `Fetching artist ${id}...`);
-                    const res = await fetch(`/api/artists/${id}`);
-                    const data = await res.json();
-                    
-                    if (data.success) {
-                        showStatus(true, `✅ Artist loaded!`);
-                    } else {
-                        showStatus(false, `❌ Failed: ${data.error}`);
-                    }
-                    
-                    document.getElementById('results').textContent = JSON.stringify(data, null, 2);
-                } catch (error) {
-                    showStatus(false, `❌ Error: ${error.message}`);
-                    document.getElementById('results').textContent = 'Error: ' + error.message;
-                }
-            }
+            // Auto-test on load
+            window.onload = () => testHealth();
         </script>
     </body>
     </html>
     """
-            
+
+# ==================== ERROR HANDLERS ====================
+
+@app.errorhandler(404)
+def not_found(e):
+    if request.path.startswith('/api/'):
+        return jsonify({"success": False, "error": "Endpoint not found"}), 404
+    return render_template('index.html')
+
+@app.errorhandler(500)
+def server_error(e):
+    logger.error(f"Server error: {str(e)}")
+    return jsonify({"success": False, "error": "Internal server error"}), 500
+
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0', port=5000)
