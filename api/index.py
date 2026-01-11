@@ -236,3 +236,65 @@ def server_error(e):
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+
+
+
+
+@app.route('/test-api')
+def test_api_page():
+    """Test API page"""
+    return """
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>API Test</title>
+        <style>
+            body { font-family: Arial; padding: 20px; background: #121212; color: #fff; }
+            button { background: #1db954; color: #fff; border: none; padding: 10px 20px; 
+                    margin: 10px; cursor: pointer; border-radius: 5px; }
+            pre { background: #282828; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        </style>
+    </head>
+    <body>
+        <h1>JioSaavn API Test</h1>
+        <button onclick="testModules()">Test Modules</button>
+        <button onclick="testSearch()">Test Search</button>
+        <button onclick="testSong()">Test Song</button>
+        
+        <h2>Results:</h2>
+        <pre id="results">Click a button to test...</pre>
+        
+        <script>
+            async function testModules() {
+                try {
+                    const res = await fetch('/api/modules');
+                    const data = await res.json();
+                    document.getElementById('results').textContent = JSON.stringify(data, null, 2);
+                } catch (error) {
+                    document.getElementById('results').textContent = 'Error: ' + error.message;
+                }
+            }
+            
+            async function testSearch() {
+                try {
+                    const res = await fetch('/api/search/songs?query=dilbar');
+                    const data = await res.json();
+                    document.getElementById('results').textContent = JSON.stringify(data, null, 2);
+                } catch (error) {
+                    document.getElementById('results').textContent = 'Error: ' + error.message;
+                }
+            }
+            
+            async function testSong() {
+                try {
+                    const res = await fetch('/api/songs/JGaRKE44');
+                    const data = await res.json();
+                    document.getElementById('results').textContent = JSON.stringify(data, null, 2);
+                } catch (error) {
+                    document.getElementById('results').textContent = 'Error: ' + error.message;
+                }
+            }
+        </script>
+    </body>
+    </html>
+    """
