@@ -17,13 +17,13 @@ app = Flask(__name__,
 
 CORS(app)
 
-# JioSaavn API - NO TRAILING SLASH
+# JioSaavn API
 API_BASE = "https://saavn.sumit.co"
 
 def make_request(endpoint, params=None):
     """Make API request with error handling"""
     try:
-        # Remove leading slash from endpoint if present to avoid double slash
+        # Remove leading slash from endpoint
         endpoint = endpoint.lstrip('/')
         url = f"{API_BASE}/{endpoint}"
         
@@ -77,7 +77,8 @@ def playlist_page(playlist_id):
 def health():
     """Health check"""
     try:
-        test = make_request('modules')
+        # Test with a real search query instead of modules
+        test = make_request('search/albums', {'query': 'trending', 'limit': '5'})
         return jsonify({
             "success": True,
             "api_working": test.get('success', False),
@@ -93,20 +94,37 @@ def health():
 
 @app.route('/api/modules')
 def get_modules():
-    """Get home modules"""
-    data = make_request('modules')
-    return jsonify(data)
+    """Get home modules - using search for trending content"""
+    # Since /modules doesn't exist, we'll search for trending albums
+    albums = make_request('search/albums', {'query': 'trending', 'limit': '20'})
+    
+    if albums.get('success'):
+        return jsonify({
+            "success": True,
+            "data": {
+                "albums": albums.get('data', {}).get('results', [])
+            }
+        })
+    
+    # Fallback to popular searches
+    albums = make_request('search/albums', {'query': 'bollywood hits', 'limit': '20'})
+    return jsonify({
+        "success": albums.get('success', False),
+        "data": {
+            "albums": albums.get('data', {}).get('results', [])
+        }
+    })
 
 @app.route('/api/trending')
 def get_trending():
-    """Get trending"""
-    data = make_request('modules')
+    """Get trending songs"""
+    data = make_request('search/songs', {'query': 'trending', 'limit': '20'})
     return jsonify(data)
 
 @app.route('/api/charts')
 def get_charts():
-    """Get charts"""
-    data = make_request('modules')
+    """Get top charts"""
+    data = make_request('search/playlists', {'query': 'top 50', 'limit': '20'})
     return jsonify(data)
 
 # ==================== SEARCH ====================
@@ -238,8 +256,6 @@ if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
 
 
-
-
 @app.route('/test-api')
 def test_api_page():
     """Test API page"""
@@ -247,50 +263,183 @@ def test_api_page():
     <!DOCTYPE html>
     <html>
     <head>
-        <title>API Test</title>
+        <title>API Test - JioSaavn</title>
         <style>
-            body { font-family: Arial; padding: 20px; background: #121212; color: #fff; }
-            button { background: #1db954; color: #fff; border: none; padding: 10px 20px; 
-                    margin: 10px; cursor: pointer; border-radius: 5px; }
-            pre { background: #282828; padding: 15px; border-radius: 5px; overflow-x: auto; }
+            body { 
+                font-family: Arial; 
+                padding: 20px; 
+                background: #121212; 
+                color: #fff; 
+                max-width: 1200px;
+                margin: 0 auto;
+            }
+            h1 { color: #1db954; }
+            button { 
+                background: #1db954; 
+                color: #000; 
+                border: none; 
+                padding: 12px 24px; 
+                margin: 10px 5px; 
+                cursor: pointer; 
+                border-radius: 20px;
+                font-weight: bold;
+            }
+            button:hover { background: #1ed760; }
+            pre { 
+                background: #282828; 
+                padding: 15px; 
+                border-radius: 8px; 
+                overflow-x: auto;
+                max-height: 500px;
+                overflow-y: auto;
+            }
+            .status { 
+                padding: 10px; 
+                border-radius: 5px; 
+                margin: 10px 0;
+            }
+            .success { background: #1db954; color: #000; }
+            .error { background: #f44336; color: #fff; }
         </style>
     </head>
     <body>
-        <h1>JioSaavn API Test</h1>
-        <button onclick="testModules()">Test Modules</button>
-        <button onclick="testSearch()">Test Search</button>
-        <button onclick="testSong()">Test Song</button>
+        <h1>🎵 JioSaavn API Test Interface</h1>
+        <p>API Base: <strong>https://saavn.sumit.co</strong></p>
         
-        <h2>Results:</h2>
+        <div id="status"></div>
+        
+        <h2>Test Endpoints:</h2>
+        <button onclick="testSearch('songs', 'dilbar')">🎵 Search Songs (dilbar)</button>
+        <button onclick="testSearch('albums', 'trending')">💿 Search Albums (trending)</button>
+        <button onclick="testSearch('artists', 'arijit')">👤 Search Artists (arijit)</button>
+        <button onclick="testSearch('playlists', 'romantic')">📋 Search Playlists (romantic)</button>
+        <button onclick="testSearchAll('bollywood')">🔍 Search All (bollywood)</button>
+        <br>
+        <button onclick="testSong('JGaRKE44')">🎵 Get Song (ID: JGaRKE44)</button>
+        <button onclick="testAlbum('1134498')">💿 Get Album</button>
+        <button onclick="testPlaylist('110858205')">📋 Get Playlist</button>
+        <button onclick="testArtist('459320')">👤 Get Artist (Arijit Singh)</button>
+        
+        <h2>Response:</h2>
         <pre id="results">Click a button to test...</pre>
         
         <script>
-            async function testModules() {
+            function showStatus(success, message) {
+                const status = document.getElementById('status');
+                status.className = 'status ' + (success ? 'success' : 'error');
+                status.textContent = message;
+            }
+            
+            async function testSearch(type, query) {
                 try {
-                    const res = await fetch('/api/modules');
+                    showStatus(true, `Searching ${type} for "${query}"...`);
+                    const res = await fetch(`/api/search/${type}?query=${query}&limit=5`);
                     const data = await res.json();
+                    
+                    if (data.success) {
+                        showStatus(true, `✅ Found ${data.data?.results?.length || 0} results!`);
+                    } else {
+                        showStatus(false, `❌ Search failed: ${data.error}`);
+                    }
+                    
                     document.getElementById('results').textContent = JSON.stringify(data, null, 2);
                 } catch (error) {
+                    showStatus(false, `❌ Error: ${error.message}`);
                     document.getElementById('results').textContent = 'Error: ' + error.message;
                 }
             }
             
-            async function testSearch() {
+            async function testSearchAll(query) {
                 try {
-                    const res = await fetch('/api/search/songs?query=dilbar');
+                    showStatus(true, `Searching all for "${query}"...`);
+                    const res = await fetch(`/api/search/all?query=${query}`);
                     const data = await res.json();
+                    
+                    if (data.success) {
+                        showStatus(true, `✅ Search completed!`);
+                    } else {
+                        showStatus(false, `❌ Search failed: ${data.error}`);
+                    }
+                    
                     document.getElementById('results').textContent = JSON.stringify(data, null, 2);
                 } catch (error) {
+                    showStatus(false, `❌ Error: ${error.message}`);
                     document.getElementById('results').textContent = 'Error: ' + error.message;
                 }
             }
             
-            async function testSong() {
+            async function testSong(id) {
                 try {
-                    const res = await fetch('/api/songs/JGaRKE44');
+                    showStatus(true, `Fetching song ${id}...`);
+                    const res = await fetch(`/api/songs/${id}`);
                     const data = await res.json();
+                    
+                    if (data.success) {
+                        showStatus(true, `✅ Song loaded: ${data.data?.[0]?.name || 'Unknown'}`);
+                    } else {
+                        showStatus(false, `❌ Failed: ${data.error}`);
+                    }
+                    
                     document.getElementById('results').textContent = JSON.stringify(data, null, 2);
                 } catch (error) {
+                    showStatus(false, `❌ Error: ${error.message}`);
+                    document.getElementById('results').textContent = 'Error: ' + error.message;
+                }
+            }
+            
+            async function testAlbum(id) {
+                try {
+                    showStatus(true, `Fetching album ${id}...`);
+                    const res = await fetch(`/api/albums/${id}`);
+                    const data = await res.json();
+                    
+                    if (data.success) {
+                        showStatus(true, `✅ Album loaded!`);
+                    } else {
+                        showStatus(false, `❌ Failed: ${data.error}`);
+                    }
+                    
+                    document.getElementById('results').textContent = JSON.stringify(data, null, 2);
+                } catch (error) {
+                    showStatus(false, `❌ Error: ${error.message}`);
+                    document.getElementById('results').textContent = 'Error: ' + error.message;
+                }
+            }
+            
+            async function testPlaylist(id) {
+                try {
+                    showStatus(true, `Fetching playlist ${id}...`);
+                    const res = await fetch(`/api/playlists/${id}`);
+                    const data = await res.json();
+                    
+                    if (data.success) {
+                        showStatus(true, `✅ Playlist loaded!`);
+                    } else {
+                        showStatus(false, `❌ Failed: ${data.error}`);
+                    }
+                    
+                    document.getElementById('results').textContent = JSON.stringify(data, null, 2);
+                } catch (error) {
+                    showStatus(false, `❌ Error: ${error.message}`);
+                    document.getElementById('results').textContent = 'Error: ' + error.message;
+                }
+            }
+            
+            async function testArtist(id) {
+                try {
+                    showStatus(true, `Fetching artist ${id}...`);
+                    const res = await fetch(`/api/artists/${id}`);
+                    const data = await res.json();
+                    
+                    if (data.success) {
+                        showStatus(true, `✅ Artist loaded!`);
+                    } else {
+                        showStatus(false, `❌ Failed: ${data.error}`);
+                    }
+                    
+                    document.getElementById('results').textContent = JSON.stringify(data, null, 2);
+                } catch (error) {
+                    showStatus(false, `❌ Error: ${error.message}`);
                     document.getElementById('results').textContent = 'Error: ' + error.message;
                 }
             }
@@ -298,3 +447,4 @@ def test_api_page():
     </body>
     </html>
     """
+            
